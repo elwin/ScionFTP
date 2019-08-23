@@ -4,4 +4,6 @@ package mode
 const (
 	Stream            = 'S'
 	ExtendedBlockMode = 'E'
+
+	PartialFileTransport = "PFT"
 )

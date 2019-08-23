@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"net"
 	"net/textproto"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/elwin/transmit2/scion"
-	"github.com/scionproto/scion/go/lib/snet"
 
 	mode2 "github.com/elwin/transmit2/mode"
 
@@ -158,16 +155,7 @@ func (c *ServerConn) openDataConn() (socket.DataSocket, error) {
 
 		sockets := make([]socket.DataSocket, len(addrs))
 		for i := range sockets {
-
-			// TODO: Why do we need new port?
-			port := rand.Intn(10000) + 50000
-			newAddr, err := scion.ReplacePort(c.local, port)
-
-			if err != nil {
-				return nil, err
-			}
-
-			conn, err := scion.Dial(newAddr, addrs[i])
+			conn, err := net.Dial("tcp", addrs[i])
 
 			if err != nil {
 
@@ -186,25 +174,13 @@ func (c *ServerConn) openDataConn() (socket.DataSocket, error) {
 		return socket.NewMultiSocket(sockets, c.maxChunkSize), nil
 
 	} else {
+
 		port, err := c.getDataConnPort()
 		if err != nil {
 			return nil, err
 		}
 
-		remote := scion.AddrToString(c.remote) + ":" + strconv.Itoa(port)
-		remoteAddr, err := snet.AddrFromString(remote)
-		if err != nil {
-			return nil, err
-		}
-
-		localPort := rand.Intn(10000) + 50000
-		local := scion.AddrToString(c.local) + ":" + strconv.Itoa(localPort)
-		localAddr, err := snet.AddrFromString(local)
-		if err != nil {
-			return nil, err
-		}
-
-		conn, err := scion.Dial(localAddr, remoteAddr)
+		conn, err := net.Dial("tcp", c.remote+":"+strconv.Itoa(port))
 		if err != nil {
 			return nil, err
 		}
@@ -526,7 +502,7 @@ func (c *ServerConn) Mode(mode byte) error {
 // host/port connections to be returned. This enables STRIPING, that is,
 // multiple network endpoints (multi-homed hosts, or multiple hosts) to
 // participate in the transfer.
-func (c *ServerConn) spas() ([]*snet.Addr, error) {
+func (c *ServerConn) spas() ([]string, error) {
 	_, line, err := c.cmd(StatusExtendedPassiveMode, "SPAS")
 	if err != nil {
 		return nil, err
@@ -534,18 +510,14 @@ func (c *ServerConn) spas() ([]*snet.Addr, error) {
 
 	lines := strings.Split(line, "\n")
 
-	var addrs []*snet.Addr
+	var addrs []string
 
 	for _, line = range lines {
 		if !strings.HasPrefix(line, " ") {
 			continue
 		}
 
-		addr, err := snet.AddrFromString(strings.TrimLeft(line, " "))
-
-		if err != nil {
-			return nil, err
-		}
+		addr := strings.TrimLeft(line, " ")
 
 		addrs = append(addrs, addr)
 	}

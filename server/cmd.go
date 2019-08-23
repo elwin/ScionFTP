@@ -7,13 +7,13 @@ package server
 import (
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 
-	"github.com/elwin/transmit/mode"
-	"github.com/jlaffaye/ftp"
+	ftp "github.com/elwin/transmit2/client"
 
-	"github.com/elwin/transmit2/scion"
+	"github.com/elwin/transmit2/mode"
 
 	socket2 "github.com/elwin/transmit2/socket"
 )
@@ -329,7 +329,7 @@ func (cmd commandEpsv) RequireAuth() bool {
 
 func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
-	listener, err := conn.NewListener()
+	listener, port, err := conn.NewListener()
 	defer listener.Close()
 
 	if err != nil {
@@ -337,7 +337,8 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
-	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", listener.Port())
+
+	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port)
 	conn.writeMessage(229, msg)
 
 	socket, err := listener.Accept()
@@ -1148,13 +1149,14 @@ func (cmd commandSpas) RequireAuth() bool {
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	sockets := make([]socket2.DataSocket, conn.parallelism)
-	listener := make([]*scion.Listener, conn.parallelism)
-	var err error
+	listener := make([]net.Listener, conn.parallelism)
 
 	line := "Entering Striped Passive Mode\n"
 
 	for i := range listener {
-		listener[i], err = conn.NewListener()
+		// TODO: Handle err
+		l, port, err := conn.NewListener()
+		listener[i] = l
 
 		if err != nil {
 			conn.writeMessage(425, "Data connection failed")
@@ -1166,10 +1168,7 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 			return
 		}
 
-		// Addr().String() return
-		// 1-ff00:0:110,[127.0.0.1]:5848 (UDP)
-		// Remove Protocol first
-		addr := strings.Split(listener[i].Addr().String(), " ")[0]
+		addr := conn.server.Hostname + ":" + strconv.Itoa(port)
 
 		line += " " + addr + "\r\n"
 	}

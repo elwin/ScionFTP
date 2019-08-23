@@ -8,11 +8,8 @@ import (
 	"io"
 	"net"
 	"net/textproto"
+	"strings"
 	"time"
-
-	"github.com/scionproto/scion/go/lib/snet"
-
-	"github.com/elwin/transmit2/scion"
 
 	"github.com/elwin/transmit2/logger"
 )
@@ -31,9 +28,9 @@ const (
 // A single connection only supports one in-flight data connection.
 // It is not safe to be called concurrently.
 type ServerConn struct {
-	options       *dialOptions
-	conn          *textproto.Conn
-	local, remote *snet.Addr
+	options *dialOptions
+	conn    *textproto.Conn
+	remote  string
 	// Server capabilities discovered at runtime
 	features      map[string]string
 	mlstSupported bool
@@ -66,7 +63,7 @@ type Entry struct {
 }
 
 // Dial connects to the specified address with optinal options
-func Dial(local, remote string, options ...DialOption) (*ServerConn, error) {
+func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	do := &dialOptions{}
 	for _, option := range options {
 		option.setup(do)
@@ -75,17 +72,6 @@ func Dial(local, remote string, options ...DialOption) (*ServerConn, error) {
 	if do.location == nil {
 		do.location = time.UTC
 	}
-
-	localAddr, err := snet.AddrFromString(local)
-	if err != nil {
-		return nil, err
-	}
-
-	remoteAddr, err := snet.AddrFromString(remote)
-	if err != nil {
-		return nil, err
-	}
-
 	ctx := do.context
 
 	if ctx == nil {
@@ -97,7 +83,7 @@ func Dial(local, remote string, options ...DialOption) (*ServerConn, error) {
 		maxChunkSize = 500
 	}
 
-	conn, err := scion.DialAddr(local, remote)
+	conn, err := net.Dial("tcp", remote)
 
 	if err != nil {
 		return nil, err
@@ -108,12 +94,13 @@ func Dial(local, remote string, options ...DialOption) (*ServerConn, error) {
 		sourceConn = newDebugWrapper(conn, do.debugOutput)
 	}
 
+	host := strings.Split(remote, ":")[0]
+
 	c := &ServerConn{
 		options:      do,
 		features:     make(map[string]string),
 		conn:         textproto.NewConn(sourceConn),
-		local:        localAddr,
-		remote:       remoteAddr,
+		remote:       host,
 		logger:       &logger.StdLogger{},
 		maxChunkSize: maxChunkSize,
 	}
@@ -193,6 +180,6 @@ func DialWithMaxChunkSize(maxChunkSize int) DialOption {
 //
 // It is generally followed by a call to Login() as most FTP commands require
 // an authenticated user.
-func DialTimeout(local, remote string, timeout time.Duration) (*ServerConn, error) {
-	return Dial(local, remote, DialWithTimeout(timeout))
+func DialTimeout(remote string, timeout time.Duration) (*ServerConn, error) {
+	return Dial(remote, DialWithTimeout(timeout))
 }

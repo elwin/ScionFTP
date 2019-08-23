@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/elwin/transmit2/scion"
 	"io"
 	"math/rand"
 	"net"
@@ -24,7 +23,7 @@ import (
 
 const (
 	defaultWelcomeMessage = "Welcome to the Go FTP Server"
-	listenerRetries = 10
+	listenerRetries       = 10
 )
 
 type Conn struct {
@@ -57,22 +56,18 @@ func (conn *Conn) IsLogin() bool {
 	return len(conn.user) > 0
 }
 
-func (conn *Conn) NewListener() (*scion.Listener, error) {
-
-	var err error
-	var listener *scion.Listener
+func (conn *Conn) NewListener() (listener net.Listener, port int, err error) {
 
 	for i := 0; i < listenerRetries; i++ {
-
-		port := rand.Intn(1000) + 5000
+		port = rand.Intn(1000) + 5000
 		addr := conn.server.Hostname + ":" + strconv.Itoa(port)
-		listener, err = scion.Listen(addr)
+		listener, err = net.Listen("tcp", addr)
 		if err == nil {
 			break
 		}
 	}
 
-	return listener, err
+	return
 }
 
 // returns a random 20 char string that can be used as a unique session ID

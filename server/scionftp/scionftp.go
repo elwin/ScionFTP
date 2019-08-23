@@ -21,15 +21,11 @@ func main() {
 		user = flag.String("user", "admin", "Username for login")
 		pass = flag.String("pass", "123456", "Password for login")
 		port = flag.Int("port", 2121, "Port")
-		host = flag.String("host", "", "Host")
+		host = flag.String("host", "localhost", "Host")
 	)
 	flag.Parse()
 	if *root == "" {
 		log.Fatalf("Please set a root to serve with -root")
-	}
-
-	if *host == "" {
-		log.Fatalf("Please set the hostaddress with -host")
 	}
 
 	factory := &filedriver.FileDriverFactory{

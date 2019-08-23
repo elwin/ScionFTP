@@ -3,10 +3,10 @@ package socket
 import (
 	"context"
 	"encoding/binary"
+	"log"
 	"sync"
 
 	"github.com/elwin/transmit2/striping"
-	"github.com/scionproto/scion/go/lib/log"
 )
 
 type WriteWorker struct {
@@ -28,7 +28,7 @@ func (w *WriteWorker) Run() {
 		case segment := <-w.segments:
 			err := w.writeSegment(segment)
 			if err != nil {
-				log.Error("Failed to write segment", "err", err)
+				log.Fatal("Failed to write segment", "err", err)
 			}
 
 		case <-w.ctx.Done():
@@ -37,7 +37,7 @@ func (w *WriteWorker) Run() {
 				striping.BlockFlagEndOfData)
 			err := w.writeHeader(eod)
 			if err != nil {
-				log.Error("Failed to write eod header", "err", err)
+				log.Fatal("Failed to write eod header", "err", err)
 			}
 			w.wg.Done()
 			return

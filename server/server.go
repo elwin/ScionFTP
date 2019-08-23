@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit2/scion"
 	"net"
 	"strconv"
 
@@ -54,7 +53,7 @@ type Server struct {
 	*Opts
 	listenTo string
 	logger   logger.Logger
-	listener *scion.Listener
+	listener net.Listener
 	ctx      context.Context
 	cancel   context.CancelFunc
 	feats    string
@@ -161,11 +160,11 @@ func (server *Server) newConn(tcpConn net.Conn, driver Driver) *Conn {
 // listening on the same port.
 //
 func (server *Server) ListenAndServe() error {
-	var listener *scion.Listener
+	var listener net.Listener
 	var err error
 	var curFeats = featCmds
 
-	listener, err = scion.Listen(server.listenTo)
+	listener, err = net.Listen("tcp", server.listenTo)
 
 	if err != nil {
 		return err
@@ -181,7 +180,7 @@ func (server *Server) ListenAndServe() error {
 // Serve accepts connections on a given net.Listener and handles each
 // request in a new goroutine.
 //
-func (server *Server) Serve(l *scion.Listener) error {
+func (server *Server) Serve(l net.Listener) error {
 	server.listener = l
 	server.ctx, server.cancel = context.WithCancel(context.Background())
 	sessionID := ""
