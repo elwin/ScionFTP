@@ -42,7 +42,7 @@ func run() error {
 		return err
 	}
 
-	err = conn.SetParallelism(10)
+	err = conn.SetRetrOpts(10, 500)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func ReadAndWrite(conn *ftp.ServerConn) error {
 		return err
 	}
 
-	res, err := conn.Eret("retr.txt", 0, 10)
+	res, err := conn.Retr("retr.txt")
 	if err != nil {
 		return err
 	}

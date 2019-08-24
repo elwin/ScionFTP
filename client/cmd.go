@@ -115,21 +115,28 @@ func (c *ServerConn) setUTF8() error {
 	return nil
 }
 
-func (c *ServerConn) SetParallelism(parallelism int) error {
+func (c *ServerConn) SetRetrOpts(parallelism, blockSize int) error {
 	if parallelism < 1 {
 		return fmt.Errorf("parallelism needs to be at least 1")
 	}
 
-	parallelOpts := "Parallelism=" + strconv.Itoa(parallelism)
+	if blockSize < 1 {
+		return fmt.Errorf("block size needs to be at least 1")
+	}
 
-	code, message, err := c.cmd(-1, "OPTS RETR "+parallelOpts+";")
+	parallelOpts := "Parallelism=" + strconv.Itoa(parallelism) + ";"
+	layoutOpts := "StripeLayout=Blocked;BlockSize=" + strconv.Itoa(blockSize) + ";"
+
+	code, message, err := c.cmd(-1, "OPTS RETR "+parallelOpts+layoutOpts)
 	if err != nil {
 		return err
 	}
 
 	if code != StatusCommandOK {
-		return fmt.Errorf("failed to set parallelism: %s", message)
+		return fmt.Errorf("failed to set options: %s", message)
 	}
+
+	c.BlockSize = blockSize
 
 	return nil
 }
@@ -190,7 +197,7 @@ func (c *ServerConn) openDataConn() (socket.DataSocket, error) {
 
 		}
 
-		return socket.NewMultiSocket(sockets, c.maxChunkSize), nil
+		return socket.NewMultiSocket(sockets, c.BlockSize), nil
 
 	} else {
 

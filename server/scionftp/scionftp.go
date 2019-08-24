@@ -10,7 +10,7 @@ import (
 	"flag"
 	"log"
 
-	filedriver "github.com/elwin/file-driver"
+	"github.com/elwin/transmit2/file-driver/driver"
 
 	"github.com/elwin/transmit2/server"
 )
@@ -28,10 +28,14 @@ func main() {
 		log.Fatalf("Please set a root to serve with -root")
 	}
 
-	factory := &filedriver.FileDriverFactory{
-		RootPath: *root,
-		Perm:     server.NewSimplePerm("user", "group"),
-	}
+	/*
+		factory := &filedriver.FileDriverFactory{
+			RootPath: *root,
+			Perm:     server.NewSimplePerm("user", "group"),
+		}
+	*/
+
+	factory := &driver.MockDriverFactory{}
 
 	opts := &server.Opts{
 		Factory:  factory,

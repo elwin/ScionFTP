@@ -45,7 +45,7 @@ type Conn struct {
 	closed        bool
 	extended      bool
 	parallelism   int
-	maxChunkSize  int
+	blockSize     int
 }
 
 func (conn *Conn) LoginUser() string {
