@@ -146,19 +146,37 @@ func (cmd commandOpts) RequireAuth() bool {
 func (cmd commandOpts) Execute(conn *Conn, param string) {
 	parts := strings.Fields(param)
 	if len(parts) != 2 {
-		conn.writeMessage(550, "Unknow params")
-		return
-	}
-	if strings.ToUpper(parts[0]) != "UTF8" {
-		conn.writeMessage(550, "Unknow params")
+		conn.writeMessage(550, "Unknown params")
 		return
 	}
 
-	if strings.ToUpper(parts[1]) == "ON" {
-		conn.writeMessage(200, "UTF8 mode enabled")
-	} else {
-		conn.writeMessage(550, "Unsupported non-utf8 mode")
+	switch strings.ToUpper(parts[0]) {
+	case "UTF8":
+		if strings.ToUpper(parts[1]) == "ON" {
+			conn.writeMessage(200, "UTF8 mode enabled")
+		} else {
+			conn.writeMessage(550, "Unsupported non-utf8 mode")
+		}
+	case "RETR":
+		parallel := strings.TrimSuffix(parts[1], ";")
+		parts = strings.Split(parallel, "=")
+		if len(parts) != 2 {
+			conn.writeMessage(550, "Unknown params")
+		} else if strings.ToUpper(parts[0]) != "PARALLELISM" {
+			conn.writeMessage(550, "Supports only parallelism option")
+		} else {
+			parallelism, err := strconv.Atoi(parts[1])
+			if err != nil || parallelism < 1 {
+				conn.writeMessage(550, "parallelism must be a number not less than 1")
+			} else {
+				conn.parallelism = parallelism
+				conn.writeMessage(200, fmt.Sprintf("Parallelism set to %d", parallelism))
+			}
+		}
+	default:
+		conn.writeMessage(550, "Unknown params")
 	}
+
 }
 
 type commandFeat struct{}
@@ -367,8 +385,6 @@ func (cmd commandList) RequireAuth() bool {
 }
 
 func (cmd commandList) Execute(conn *Conn, param string) {
-
-	fmt.Println("List!")
 
 	path := conn.buildPath(parseListParam(param))
 	info, err := conn.driver.Stat(path)

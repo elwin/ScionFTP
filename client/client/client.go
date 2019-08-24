@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elwin/transmit/mode"
 	ftp "github.com/elwin/transmit2/client"
+	"github.com/elwin/transmit2/mode"
 )
 
 func main() {
@@ -20,10 +20,9 @@ func main() {
 
 func run() error {
 
-	remote := "1-ff00:0:110,[127.0.0.1]:2121"
-	local := "1-ff00:0:112,[127.0.0.1]:4000"
+	remote := "localhost:2121"
 
-	conn, err := ftp.Dial(local, remote, ftp.DialWithDebugOutput(os.Stdout))
+	conn, err := ftp.Dial(remote, ftp.DialWithDebugOutput(os.Stdout))
 	if err != nil {
 		return err
 	}
@@ -33,7 +32,17 @@ func run() error {
 		return err
 	}
 
+	err = ReadAndWrite(conn)
+	if err != nil {
+		return err
+	}
+
 	err = conn.Mode(mode.ExtendedBlockMode)
+	if err != nil {
+		return err
+	}
+
+	err = conn.SetParallelism(10)
 	if err != nil {
 		return err
 	}
@@ -41,15 +50,6 @@ func run() error {
 	err = ReadAndWrite(conn)
 	if err != nil {
 		return err
-	}
-
-	entries, err := conn.List("/")
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		fmt.Printf("- %s (%d)\n", entry.Name, entry.Size)
 	}
 
 	return conn.Quit()
@@ -62,8 +62,11 @@ func ReadAndWrite(conn *ftp.ServerConn) error {
 	}
 
 	res, err := conn.Eret("retr.txt", 0, 10)
+	if err != nil {
+		return err
+	}
 
-	f, err := os.Create("/home/elwin/ftp/result.txt")
+	f, err := os.Create("/Users/elwin/ftp/result.txt")
 	if err != nil {
 		return err
 	}
@@ -73,7 +76,19 @@ func ReadAndWrite(conn *ftp.ServerConn) error {
 		return err
 	}
 
+	res.Close()
+	f.Close()
+
 	fmt.Printf("Read %d bytes\n", n)
 
-	return res.Close()
+	entries, err := conn.List("/")
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		fmt.Printf("- %s (%d)\n", entry.Name, entry.Size)
+	}
+
+	return nil
 }

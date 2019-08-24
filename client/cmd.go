@@ -115,6 +115,25 @@ func (c *ServerConn) setUTF8() error {
 	return nil
 }
 
+func (c *ServerConn) SetParallelism(parallelism int) error {
+	if parallelism < 1 {
+		return fmt.Errorf("parallelism needs to be at least 1")
+	}
+
+	parallelOpts := "Parallelism=" + strconv.Itoa(parallelism)
+
+	code, message, err := c.cmd(-1, "OPTS RETR "+parallelOpts+";")
+	if err != nil {
+		return err
+	}
+
+	if code != StatusCommandOK {
+		return fmt.Errorf("failed to set parallelism: %s", message)
+	}
+
+	return nil
+}
+
 // epsv issues an "EPSV" command to get a port number for a data connection.
 func (c *ServerConn) epsv() (port int, err error) {
 	_, line, err := c.cmd(StatusExtendedPassiveMode, "EPSV")
