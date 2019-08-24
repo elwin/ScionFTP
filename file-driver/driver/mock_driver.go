@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -54,16 +55,16 @@ func (driver *MockDriver) GetFile(path string, offset int64) (int64, io.ReadClos
 		return 0, nil, fmt.Errorf("path name must be length of file in bytes")
 	}
 
-	return int64(bytes), &InfinityWriter{bytes}, nil
+	return int64(bytes), &RandomWriter{bytes}, nil
 }
 
-var _ io.ReadCloser = &InfinityWriter{}
+var _ io.ReadCloser = &RandomWriter{}
 
-type InfinityWriter struct {
+type RandomWriter struct {
 	remainder int
 }
 
-func (writer *InfinityWriter) Read(p []byte) (n int, err error) {
+func (writer *RandomWriter) Read(p []byte) (n int, err error) {
 	if writer.remainder == 0 {
 		return 0, io.EOF
 	}
@@ -73,15 +74,16 @@ func (writer *InfinityWriter) Read(p []byte) (n int, err error) {
 		n = writer.remainder
 	}
 
-	for i := 0; i < n; i++ {
-		p[i] = byte(i)
+	n, err = rand.Read(p[0:n])
+	if err != nil {
+		return n, err
 	}
 
 	writer.remainder -= n
 	return n, nil
 }
 
-func (writer *InfinityWriter) Close() error {
+func (writer *RandomWriter) Close() error {
 	return nil
 }
 
