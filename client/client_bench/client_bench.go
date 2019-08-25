@@ -45,7 +45,8 @@ func run() error {
 	extended := []rune{mode.Stream, mode.ExtendedBlockMode}
 	parallelisms := []int{1, 2, 4, 8, 16, 32}
 	payloads := []int{8}
-	blocksizes := []int{512, 1024, 2048, 4096}
+	// blocksizes := []int{16384}
+	blocksizes := []int{512, 1024, 2048, 4096, 8192}
 
 	var tests []*test
 	for _, m := range extended {
@@ -72,16 +73,16 @@ func run() error {
 		}
 	}
 
-	conn, err := ftp.Dial(remote)
-	if err != nil {
-		return err
-	}
-
-	if err = conn.Login("admin", "123456"); err != nil {
-		return err
-	}
-
 	for _, test := range tests {
+		conn, err := ftp.Dial(remote)
+		if err != nil {
+			return err
+		}
+
+		if err = conn.Login("admin", "123456"); err != nil {
+			return err
+		}
+
 		err = conn.Mode(test.mode)
 		if err != nil {
 			return err
@@ -110,6 +111,8 @@ func run() error {
 		response.Close()
 
 		test.duration += time.Since(start)
+		conn.Quit()
+
 		fmt.Print(".")
 	}
 	fmt.Println()

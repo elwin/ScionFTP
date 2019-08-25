@@ -10,7 +10,7 @@ import (
 
 type WriterSocket struct {
 	sockets           []DataSocket
-	maxLength         int
+	blockSize         int
 	segmentChannel    chan *striping.Segment
 	wg                *sync.WaitGroup
 	cancel            context.CancelFunc
@@ -23,8 +23,9 @@ var _ io.Closer = &WriterSocket{}
 
 func NewWriterSocket(sockets []DataSocket, maxLength int) *WriterSocket {
 	return &WriterSocket{
-		sockets:        sockets,
-		maxLength:      maxLength,
+		sockets:   sockets,
+		blockSize: maxLength,
+		// Not sure if we can make a buffered channel (see FinishAndWait())
 		segmentChannel: make(chan *striping.Segment),
 		wg:             &sync.WaitGroup{},
 	}
@@ -46,7 +47,7 @@ func (s *WriterSocket) Write(p []byte) (n int, err error) {
 			return cur, nil
 		}
 
-		to := cur + s.maxLength
+		to := cur + s.blockSize
 		if to > len(p) {
 			to = len(p)
 		}
