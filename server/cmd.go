@@ -164,7 +164,7 @@ func (cmd commandOpts) Execute(conn *Conn, param string) {
 		} else {
 			conn.parallelism = parallelism
 			conn.blockSize = blockSize
-			conn.writeMessage(200, fmt.Sprintf("Parallelism set to %d", parallelism))
+			conn.writeMessage(200, fmt.Sprintf("Parallelism set to %d, Block size set to %d", parallelism, blockSize))
 		}
 	default:
 		conn.writeMessage(550, "Unknown params")

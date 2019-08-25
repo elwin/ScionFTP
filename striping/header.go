@@ -2,7 +2,7 @@ package striping
 
 // Extended Block Header Flags
 const (
-	// BlockFlagEndOfDataCount uint8 = 64
+	// BlockFlagEndOfDataCount uint8 = 64 // We don't sent this flag since we always assume all channels send data
 	// BlockFlagSuspectErrors  uint8 = 32
 	BlockFlagEndOfData uint8 = 8
 	// BlockFlagSenderClosesConnection uint8 = 4

@@ -1,11 +1,10 @@
 package queue
 
-import "sync"
-
 type Sortable interface {
 	Less(b Sortable) bool
 }
 
+// This queue is NOT threadsafe
 type Queue interface {
 	Pop() Sortable
 	Peek() Sortable
@@ -21,7 +20,6 @@ var _ Queue = &Implementation{}
 type Implementation struct {
 	first *Item
 	len   int
-	sync.Mutex
 }
 
 type Item struct {
@@ -31,9 +29,6 @@ type Item struct {
 
 // Time-Complexity: O(1)
 func (queue *Implementation) Pop() Sortable {
-	queue.Lock()
-	defer queue.Unlock()
-
 	if queue.first == nil {
 		panic("Can't pop from empty queue")
 	}
@@ -53,9 +48,6 @@ func (queue *Implementation) Pop() Sortable {
 
 // Time-Complexity: O(n)
 func (queue *Implementation) Push(sortable Sortable) {
-	queue.Lock()
-	defer queue.Unlock()
-
 	queue.len++
 
 	item := &Item{value: sortable}
@@ -82,17 +74,11 @@ func (queue *Implementation) Push(sortable Sortable) {
 }
 
 func (queue *Implementation) Peek() Sortable {
-	queue.Lock()
-	defer queue.Unlock()
-
 	return queue.first.value
 }
 
 // Time-Complexity: O(1)
 func (queue *Implementation) Len() int {
-	queue.Lock()
-	defer queue.Unlock()
-
 	return queue.len
 }
 
