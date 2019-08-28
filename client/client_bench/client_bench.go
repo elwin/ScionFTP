@@ -42,7 +42,7 @@ func (test *test) String() string {
 
 func run() error {
 
-	extended := []rune{mode.Stream, mode.ExtendedBlockMode}
+	extended := []rune{mode.ExtendedBlockMode, mode.Stream}
 	parallelisms := []int{1, 2, 4, 8, 16, 32}
 	payloads := []int{8}
 	// blocksizes := []int{16384}

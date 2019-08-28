@@ -10,6 +10,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	ftp "github.com/elwin/transmit2/client"
 
@@ -1217,19 +1218,21 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	conn.writeMessageMultiline(229, line)
 
+	wg := &sync.WaitGroup{}
+	wg.Add(len(listener))
 	for i := range listener {
-		connection, err := listener[i].Accept()
-		if err != nil {
-			conn.writeMessage(426, "Connection closed, failed to open data connection")
+		go func(i int) {
+			defer wg.Done()
 
-			// Close already opened sockets
-			for j := 0; j < i; j++ {
-				listener[i].Close()
+			connection, err := listener[i].Accept()
+			if err != nil {
+				conn.writeMessage(426, "Connection closed, failed to open data connection")
 			}
-			return
-		}
-		sockets[i] = socket2.NewScionSocket(connection)
+			sockets[i] = socket2.NewScionSocket(connection)
+		}(i)
 	}
+
+	wg.Wait()
 
 	conn.dataConn = socket2.NewMultiSocket(sockets, conn.blockSize)
 

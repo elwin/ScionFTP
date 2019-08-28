@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mode2 "github.com/elwin/transmit2/mode"
@@ -172,6 +173,7 @@ func (c *ServerConn) getDataConnPort() (int, error) {
 // openDataConn creates a new FTP data connection.
 func (c *ServerConn) openDataConn() (socket.DataSocket, error) {
 
+	// TODO: Close other sockets if there was an error
 	if c.extended {
 
 		addrs, err := c.spas()
@@ -180,21 +182,25 @@ func (c *ServerConn) openDataConn() (socket.DataSocket, error) {
 		}
 
 		sockets := make([]socket.DataSocket, len(addrs))
+		wg := &sync.WaitGroup{}
+		wg.Add(len(sockets))
 		for i := range sockets {
-			conn, err := net.Dial("tcp", addrs[i])
+			go func(i int) {
+				defer wg.Done()
 
-			if err != nil {
-
-				// Close already opened sockets
-				for j := 0; j < i; j++ {
-					sockets[j].Close()
+				conn, e := net.Dial("tcp", addrs[i])
+				if e != nil {
+					err = e
+				} else {
+					sockets[i] = socket.NewScionSocket(conn)
 				}
+			}(i)
+		}
 
-				return nil, err
-			}
+		wg.Wait()
 
-			sockets[i] = socket.NewScionSocket(conn)
-
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to all datasockets")
 		}
 
 		return socket.NewMultiSocket(sockets, c.BlockSize), nil
