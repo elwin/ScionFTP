@@ -16,21 +16,14 @@ import (
 
 func main() {
 	var (
-		root = flag.String("root", "", "Root directory to serve")
 		user = flag.String("user", "admin", "Username for login")
 		pass = flag.String("pass", "123456", "Password for login")
 		port = flag.Int("port", 2121, "Port")
 		host = flag.String("host", "localhost", "Host")
 	)
 	flag.Parse()
-	if *root == "" {
-		log.Fatalf("Please set a root to serve with -root")
-	}
 
-	factory := &filedriver.FileDriverFactory{
-		RootPath: *root,
-		Perm:     server.NewSimplePerm("user", "group"),
-	}
+	factory := &filedriver.MockDriverFactory{}
 
 	opts := &server.Opts{
 		Factory:  factory,

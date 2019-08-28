@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"strconv"
 	"time"
 
@@ -12,11 +14,16 @@ import (
 	ftp "github.com/elwin/transmit2/client"
 )
 
-const (
-	remote = "localhost:2121"
+var (
+	remote = flag.String("remote", "", "Remote host (including port)")
 )
 
 func main() {
+
+	flag.Parse()
+	if *remote == "" {
+		log.Fatal("Please provide a remote address with -remote")
+	}
 
 	if err := run(); err != nil {
 		fmt.Println(err)
@@ -74,7 +81,7 @@ func run() error {
 	}
 
 	for _, test := range tests {
-		conn, err := ftp.Dial(remote)
+		conn, err := ftp.Dial(*remote)
 		if err != nil {
 			return err
 		}
