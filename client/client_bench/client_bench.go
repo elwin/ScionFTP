@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,6 +18,10 @@ import (
 
 var (
 	remote = flag.String("remote", "", "Remote host (including port)")
+)
+
+const (
+	size_unit = 1024 // KB
 )
 
 func main() {
@@ -43,15 +49,37 @@ func (test *test) String() string {
 	if test.mode == mode.Stream {
 		return fmt.Sprintf("Stream with %d MB: %s", test.payload, test.duration)
 	} else {
-		return fmt.Sprintf("Extended (streams: %d, bs: %d) with %d MB: %s", test.parallelism, test.blockSize, test.payload, test.duration)
+		return fmt.Sprintf("Extended (streams: %d, bs: %d) with %d KB: %s", test.parallelism, test.blockSize, test.payload, test.duration)
 	}
+}
+
+func writeToCsv(results []*test) {
+	w := csv.NewWriter(os.Stderr)
+	header := []string{"mode", "parallelism", "payload (KB)", "block_size", "duration"}
+	if err := w.Write(header); err != nil {
+		log.Fatal(err)
+	}
+	for _, result := range results {
+		record := []string{
+			string(result.mode),
+			strconv.Itoa(result.parallelism),
+			strconv.Itoa(result.payload),
+			strconv.Itoa(result.blockSize),
+			strconv.Itoa(result.blockSize),
+		}
+		if err := w.Write(record); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	w.Flush()
 }
 
 func run() error {
 
 	extended := []rune{mode.ExtendedBlockMode, mode.Stream}
 	parallelisms := []int{1, 2, 4, 8, 16, 32}
-	payloads := []int{8}
+	payloads := []int{8 * 1024}
 	// blocksizes := []int{16384}
 	blocksizes := []int{512, 1024, 2048, 4096, 8192}
 
@@ -103,7 +131,7 @@ func run() error {
 		}
 
 		start := time.Now()
-		response, err := conn.Retr(strconv.Itoa(test.payload * 1024 * 1024))
+		response, err := conn.Retr(strconv.Itoa(test.payload * size_unit))
 		if err != nil {
 			return err
 		}
@@ -112,7 +140,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if int(n) != test.payload*1024*1024 {
+		if int(n) != test.payload*size_unit {
 			return fmt.Errorf("failed to read correct number of bytes, expected %d but got %d", test.payload*1024*1024, n)
 		}
 		response.Close()
@@ -127,6 +155,10 @@ func run() error {
 	for _, test := range tests {
 		fmt.Println(test)
 	}
+
+	fmt.Println("--------------")
+
+	writeToCsv(tests)
 
 	return nil
 }
