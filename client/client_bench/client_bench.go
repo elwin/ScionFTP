@@ -65,7 +65,7 @@ func writeToCsv(results []*test) {
 			strconv.Itoa(result.parallelism),
 			strconv.Itoa(result.payload),
 			strconv.Itoa(result.blockSize),
-			strconv.Itoa(result.blockSize),
+			strconv.FormatFloat(result.duration.Seconds(), 'f', -1, 64),
 		}
 		if err := w.Write(record); err != nil {
 			log.Fatal(err)
@@ -108,13 +108,26 @@ func run() error {
 		}
 	}
 
-	for _, test := range tests {
-		conn, err := ftp.Dial(*remote)
-		if err != nil {
-			return err
-		}
+	conn, err := ftp.Dial(*remote)
+	defer conn.Quit()
+	if err = conn.Login("admin", "123456"); err != nil {
+		return err
+	}
 
-		if err = conn.Login("admin", "123456"); err != nil {
+	// Warm-up
+	response, err := conn.Retr(strconv.Itoa(tests[0].payload * size_unit))
+	if err != nil {
+		log.Fatal("failed to retrieve file", err)
+	} else {
+		_, err = io.Copy(ioutil.Discard, response)
+		if err != nil {
+			log.Fatal("failed to copy data", err)
+		}
+		response.Close()
+	}
+
+	for _, test := range tests {
+		if err != nil {
 			return err
 		}
 
@@ -146,7 +159,6 @@ func run() error {
 		response.Close()
 
 		test.duration += time.Since(start)
-		conn.Quit()
 
 		fmt.Print(".")
 	}
