@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/elwin/transmit2/mode"
-
 	ftp "github.com/elwin/transmit2/client"
+
+	"github.com/elwin/transmit2/mode"
 )
 
 var (
@@ -21,7 +21,8 @@ var (
 )
 
 const (
-	size_unit = 1024 // KB
+	sizeUnit = 1000 * 1000 // MB
+	sleep    = 5 * time.Second
 )
 
 func main() {
@@ -79,9 +80,9 @@ func run() error {
 
 	extended := []rune{mode.ExtendedBlockMode, mode.Stream}
 	parallelisms := []int{1, 2, 4, 8, 16, 32}
-	payloads := []int{8 * 1024}
-	// blocksizes := []int{16384}
-	blocksizes := []int{512, 1024, 2048, 4096, 8192}
+	payloads := []int{32}
+	blocksizes := []int{4096}
+	// blocksizes := []int{512, 1024, 2048, 4096, 8192}
 
 	var tests []*test
 	for _, m := range extended {
@@ -108,6 +109,8 @@ func run() error {
 		}
 	}
 
+	fmt.Printf("%d Testcases\n", len(tests))
+
 	conn, err := ftp.Dial(*remote)
 	defer conn.Quit()
 	if err = conn.Login("admin", "123456"); err != nil {
@@ -115,7 +118,14 @@ func run() error {
 	}
 
 	// Warm-up
-	response, err := conn.Retr(strconv.Itoa(tests[0].payload * size_unit))
+	if err = conn.Mode(mode.ExtendedBlockMode); err != nil {
+		return err
+	}
+	if err = conn.SetRetrOpts(8, 4096); err != nil {
+		return err
+	}
+
+	response, err := conn.Retr(strconv.Itoa(tests[0].payload * sizeUnit))
 	if err != nil {
 		log.Fatal("failed to retrieve file", err)
 	} else {
@@ -127,9 +137,7 @@ func run() error {
 	}
 
 	for _, test := range tests {
-		if err != nil {
-			return err
-		}
+		time.Sleep(sleep)
 
 		err = conn.Mode(test.mode)
 		if err != nil {
@@ -144,7 +152,7 @@ func run() error {
 		}
 
 		start := time.Now()
-		response, err := conn.Retr(strconv.Itoa(test.payload * size_unit))
+		response, err := conn.Retr(strconv.Itoa(test.payload * sizeUnit))
 		if err != nil {
 			return err
 		}
@@ -153,8 +161,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if int(n) != test.payload*size_unit {
-			return fmt.Errorf("failed to read correct number of bytes, expected %d but got %d", test.payload*1024*1024, n)
+		if int(n) != test.payload*sizeUnit {
+			return fmt.Errorf("failed to read correct number of bytes, expected %d but got %d", test.payload*sizeUnit, n)
 		}
 		response.Close()
 
@@ -162,11 +170,8 @@ func run() error {
 
 		fmt.Print(".")
 	}
-	fmt.Println()
 
-	for _, test := range tests {
-		fmt.Println(test)
-	}
+	fmt.Println()
 
 	fmt.Println("--------------")
 
